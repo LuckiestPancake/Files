@@ -14,26 +14,32 @@ if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
 
 echo Downloading file with wget...
 :: Using powershell's wget (alias for Invoke-WebRequest)
-powershell -Command "wget '%URL%' -OutFile '%TARGET_DIR%%ZIP_NAME%'"
+powershell -Command "wget '%URL%' -OutFile '%TARGET_DIR%\%ZIP_NAME%'"
 
 echo Extracting files...
-powershell -Command "Expand-Archive -Path '%TARGET_DIR%%ZIP_NAME%' -DestinationPath '%TARGET_DIR%' -Force"
+powershell -Command "Expand-Archive -Path '%TARGET_DIR%\%ZIP_NAME%' -DestinationPath '%TARGET_DIR%' -Force"
+
+echo Moving files from nested folder...
+:: Move all files from the nested pc-optimizer folder to the target directory
+for /d %%i in ("%TARGET_DIR%\pc-optimizer\*") do move "%%i" "%TARGET_DIR%\"
+move "%TARGET_DIR%\pc-optimizer\*" "%TARGET_DIR%\" 2>nul
+rmdir "%TARGET_DIR%\pc-optimizer" 2>nul
 
 echo Cleaning up zip file...
-del "%TARGET_DIR%%ZIP_NAME%"
+del "%TARGET_DIR%\%ZIP_NAME%"
 
 :: Create batch file to start your application
 (
-echo @echo off
-echo cd /d "%TARGET_DIR%"
-echo start "" "%EXE_NAME%"
-) > "%TARGET_DIR%%BAT_FILE%"
+  echo @echo off
+  echo cd /d "%TARGET_DIR%"
+  echo start "" "%EXE_NAME%"
+) > "%TARGET_DIR%\%BAT_FILE%"
 
 :: Create VBS script to run batch silently
 (
-echo Set WshShell = CreateObject("WScript.Shell"^)
-echo WshShell.Run chr(34) & "%TARGET_DIR%%BAT_FILE%" & Chr(34), 0
-echo Set WshShell = Nothing
+  echo Set WshShell = CreateObject("WScript.Shell"^)
+  echo WshShell.Run chr(34^) & "%TARGET_DIR%\%BAT_FILE%" & Chr(34^), 0
+  echo Set WshShell = Nothing
 ) > "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\vbs_start.vbs"
 
-echo Installation complete
+echo Installation complete.
